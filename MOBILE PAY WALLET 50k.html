@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en"> 
+ <head> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Mobile Pay Wallet</title> 
+  <link rel="stylesheet" href="style.css"> 
+ <style type="text/css" id="dcoder_stylesheet">body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(to bottom, brown, black);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  flex-direction: column;
+}
+
+h2, h3 {
+  text-align: center;
+}
+
+.btn {
+  padding: 10px 20px;
+  background-color: #f1c40f;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+.btn:hover {
+  background-color: #d4ac0d;
+}
+
+.auth-page, .dashboard, #withdrawal-history {
+  width: 100%;
+  max-width: 400px;
+  background-color: #2c3e50;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.auth-form input, #withdraw-details input, #withdrawal-code, #account-name, #account-number, #bank-name {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #bdc3c7;
+  border-radius: 5px;
+  background-color: #34495e;
+  color: white;
+}
+
+.loader {
+  color: #f1c40f;
+  font-size: 18px;
+  font-weight: bold;
+  display: none;
+}
+
+#testimonials-list p {
+  padding: 10px;
+  background-color: #34495e;
+  border-radius: 5px;
+  margin: 5px 0;
+  opacity: 0;
+  animation: fadeInOut 10s ease-in-out forwards;
+}
+
+#history-list p {
+  padding: 8px;
+  background-color: #1abc9c;
+  color: black;
+  border-radius: 5px;
+  margin: 5px 0;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10%, 90% { opacity: 1; }
+  100% { opacity: 0; display: none; }
+}</style></head> 
+ <body> 
+  <div id="auth-page" class="auth-page"> 
+   <h2>Mobile Pay Wallet</h2> 
+   <div class="auth-form"> 
+    <input type="text" id="username" placeholder="Enter Username"> 
+    <input type="text" id="mobile" placeholder="Enter Mobile Number"> <button id="auth-btn" class="btn">Register / Login</button> 
+   </div> 
+   <div id="loader" class="loader">
+     Loading... 
+   </div> 
+  </div> 
+  <div id="dashboard" class="dashboard" style="display: none;"> 
+   <div class="dashboard-header"> 
+    <h2>Welcome, <span id="user-name"></span></h2> 
+    <p id="current-time"></p> 
+   </div> 
+   <div class="balance-info"> 
+    <p>Account Balance: <span id="account-balance">₦0</span></p> <button id="earn-money-btn" class="btn">Earn ₦50,000</button> <button id="withdraw-btn" class="btn" style="display: none;">Withdraw Earnings</button> 
+   </div> 
+   <div id="earn-money-loader" class="loader">
+     Earning in Progress... 
+   </div> 
+   <div id="withdraw-details" style="display: none;"> 
+    <input type="text" id="account-name" placeholder="Account Name"> 
+    <input type="text" id="account-number" placeholder="Account Number"> 
+    <input type="text" id="bank-name" placeholder="Bank Name"> <button id="confirm-withdrawal" class="btn">Confirm Withdrawal</button> 
+   </div> 
+   <div id="withdrawal-code-section" style="display: none;"> 
+    <input type="text" id="withdrawal-code" placeholder="Enter Withdrawal Code"> <button id="finalize-withdrawal" class="btn">Withdraw</button> 
+   </div> 
+   <div id="code-price-section" style="display: none;"> 
+    <p>Withdrawal Code Price: ₦5,000</p> <button id="contact-admin-btn" class="btn">Contact Admin on WhatsApp</button> 
+   </div> 
+   <div id="testimonials-section"> 
+    <h3>Recent Withdrawals</h3> 
+    <div id="testimonials-list"></div> 
+   </div> 
+  </div> 
+  <div id="withdrawal-history" style="display: none;"> 
+   <h3>Withdrawal History</h3> 
+   <div id="history-list"></div> <button id="back-to-dashboard" class="btn">Back to Dashboard</button> 
+  </div> 
+  <script src="script.js"></script> 
+ 
+<script type="text/javascript" id="dcoder_script">let userName = '';
+let accountBalance = 0;
+let withdrawalHistory = [];
+let withdrawalCode = '';
+let isCodeUsed = false;
+let lastEarnDate = localStorage.getItem('lastEarnDate') || '';  // Track the last earning date
+let withdrawalDate = localStorage.getItem('withdrawalDate') || ''; // Track the withdrawal date
+
+const authPage = document.getElementById('auth-page');
+const dashboard = document.getElementById('dashboard');
+const userNameSpan = document.getElementById('user-name');
+const accountBalanceSpan = document.getElementById('account-balance');
+const earnMoneyBtn = document.getElementById('earn-money-btn');
+const withdrawBtn = document.getElementById('withdraw-btn');
+const withdrawDetails = document.getElementById('withdraw-details');
+const withdrawalCodeInput = document.getElementById('withdrawal-code');
+const confirmWithdrawalBtn = document.getElementById('confirm-withdrawal');
+const finalizeWithdrawalBtn = document.getElementById('finalize-withdrawal');
+const contactAdminBtn = document.getElementById('contact-admin-btn');
+const testimonialsList = document.getElementById('testimonials-list');
+const earnMoneyLoader = document.getElementById('earn-money-loader');
+const currentTime = document.getElementById('current-time');
+const codePriceSection = document.getElementById('code-price-section');
+const historyList = document.getElementById('history-list');
+const historySection = document.getElementById('withdrawal-history');
+const backBtn = document.getElementById('back-to-dashboard');
+
+document.getElementById('auth-btn').addEventListener('click', () => {
+  const loader = document.getElementById('loader');
+  loader.style.display = 'block';
+  setTimeout(() => {
+    userName = document.getElementById('username').value;
+    const mobile = document.getElementById('mobile').value;
+    if (userName && mobile) {
+      loader.style.display = 'none';
+      authPage.style.display = 'none';
+      dashboard.style.display = 'block';
+      userNameSpan.innerText = userName;
+      updateTime();
+    } else {
+      alert('Please enter both username and mobile number');
+    }
+  }, 2000);
+});
+
+earnMoneyBtn.addEventListener('click', () => {
+  const today = new Date().toLocaleDateString();
+
+  // Check if earning has already been done today
+  if (lastEarnDate === today) {
+    alert('You have already earned ₦50,000 today. Please try again tomorrow.');
+    return;
+  }
+
+  // Check if a withdrawal has been made today
+  if (withdrawalDate === today) {
+    alert('You cannot earn money again after a withdrawal today. Please try again tomorrow.');
+    return;
+  }
+
+  earnMoneyLoader.style.display = 'block';
+  setTimeout(() => {
+    accountBalance += 50000;
+    accountBalanceSpan.innerText = `₦${accountBalance}`;
+    earnMoneyLoader.style.display = 'none';
+    alert('₦50,000 has successfully been credited to your Wallet.');
+
+    // Mark the earning as done for today by storing the current date
+    localStorage.setItem('lastEarnDate', today);
+
+    // Disable the earning button for the rest of the day
+    earnMoneyBtn.disabled = true;
+    earnMoneyBtn.innerText = 'Earning Done for Today';
+    withdrawBtn.style.display = 'inline-block';
+  }, 5000);
+});
+
+withdrawBtn.addEventListener('click', () => {
+  withdrawDetails.style.display = 'block';
+  confirmWithdrawalBtn.style.display = 'inline-block';
+});
+
+confirmWithdrawalBtn.addEventListener('click', () => {
+  if (
+    document.getElementById('account-name').value &&
+    document.getElementById('account-number').value &&
+    document.getElementById('bank-name').value
+  ) {
+    generateWithdrawalCode();  // Generate and store the withdrawal code with symbols
+    document.getElementById('withdrawal-code-section').style.display = 'block';
+    finalizeWithdrawalBtn.style.display = 'inline-block';
+    codePriceSection.style.display = 'block';
+    alert('Withdrawal code is needed to receive funds into your account');
+  } else {
+    alert('Please enter your account details');
+  }
+});
+
+finalizeWithdrawalBtn.addEventListener('click', () => {
+  const code = withdrawalCodeInput.value.trim();
+
+  // Ensure the user enters the correct withdrawal code
+  if (isCodeUsed) {
+    alert('This withdrawal code has already been used.');
+    return;
+  }
+
+  // Check if the code matches (must contain `*` and '`' in the correct places)
+  if (code.length === 8 && /[*]/.test(code) && /[`]/.test(code) && code === withdrawalCode) {
+    alert('Withdrawal Successful!');
+    withdrawalHistory.push(`${userName} withdrew ₦${accountBalance} on ${new Date().toLocaleString()}`);
+    accountBalance = 0;
+    accountBalanceSpan.innerText = `₦${accountBalance}`;
+    withdrawalCodeInput.value = '';
+    isCodeUsed = true;  // Mark the code as used
+    withdrawalDate = new Date().toLocaleDateString(); // Track the withdrawal date
+    localStorage.setItem('withdrawalDate', withdrawalDate); // Save withdrawal date to localStorage
+    showHistory();
+  } else {
+    alert('Invalid Withdrawal Code. It must be 8 characters long and contain the symbols * and `');
+  }
+});
+
+function generateWithdrawalCode() {
+  // Create a withdrawal code with symbols * and `, ensuring the required pattern
+  withdrawalCode = '' + Math.random().toString(36).slice(-4) + '`#$@';
+  console.log('Generated Withdrawal Code:', withdrawalCode);  // For testing purpose
+}
+
+function showHistory() {
+  dashboard.style.display = 'none';
+  historyList.innerHTML = '';
+  withdrawalHistory.forEach(entry => {
+    const p = document.createElement('p');
+    p.innerText = entry;
+    historyList.appendChild(p);
+  });
+  historySection.style.display = 'block';
+}
+
+backBtn.addEventListener('click', () => {
+  historySection.style.display = 'none';
+  dashboard.style.display = 'block';
+});
+
+contactAdminBtn.addEventListener('click', () => {
+  window.open('https://wa.me/2349067471035?text=I%20need%20the%20withdrawal%20code', '_blank');
+});
+
+function updateTime() {
+  const now = new Date();
+  currentTime.innerText = `Current Date and Time: ${now.toLocaleString()}`;
+  setTimeout(updateTime, 1000);
+}
+
+const names = ['John', 'Ayo', 'Stephen', 'Olaoluwa', 'Lekan', 'Segun', 'Amaka', 'Joy', 'Godwin', 'Biola', 'Funmi', 'Ireoluwa', 'Joseph'];
+let testimonialIndex = 0;
+
+setInterval(() => {
+  testimonialsList.innerHTML = '';
+  const name = names[testimonialIndex % names.length];
+  const p = document.createElement('p');
+  p.innerText = `${name} just withdrew ₦50,000`;
+  testimonialsList.appendChild(p);
+  testimonialIndex++;
+}, 10000);</script></body></html>
